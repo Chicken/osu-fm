@@ -1,1 +1,21 @@
+# dev
 node_modules/
+build/
+dist/
+
+# node
+package-lock.json
+.node_repl_history
+*.log*
+*.heapsnapshot
+
+# stuff
+.vs/
+.vscode/
+.idea/
+.DS_Store
+
+# yarn
+.yarn/install-state.gz
+.yarn/build-state.yml
+

@@ -24,8 +24,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-import md5 from "md5";
-import fetch from "node-fetch";
+const md5 = require("md5");
+const { store } = require("./store.js");
+const { shell } = require("electron");
+const fetchPromise = import("node-fetch").then((mod) => mod.default);
+// @ts-expect-error
+const fetch = (...args) => fetchPromise.then((fetch) => fetch(...args));
 
 /**
  * @param {Record<string, string>} params
@@ -102,12 +106,9 @@ async function createToken({ api_key, api_root, secret }) {
 async function authenticate(config) {
     // asks the user for authentication
     config.token = await createToken(config);
-    // TODO: save config
-    console.log(
-        `Authentication URL - https://www.last.fm/api/auth/?api_key=${config.api_key}&token=${config.token}`
-    );
-
-    await getAndSetSessionKey(config);
+    store.set("token", config.token);
+    shell.openExternal(`https://www.last.fm/api/auth/?api_key=${config.api_key}&token=${config.token}`);
+    setTimeout(() => getAndSetSessionKey(config), 5_000);
 }
 
 /**
@@ -125,17 +126,16 @@ async function getAndSetSessionKey(config) {
     };
     const api_sig = createApiSig(data, config.secret);
     const response = await fetch(`${config.api_root}${createQueryString(data, api_sig)}`);
-    const json = /** @type {{ error?: unknown; session?: { key?: string; }; }} */ (
-        await response.json()
-    );
+    const json = /** @type {{ error?: unknown; session?: { key?: string; }; }} */ (await response.json());
     if (json.error) {
         setTimeout(() => {
             getAndSetSessionKey(config);
         }, config.retry_timeout);
         return;
     }
+    console.log("Got and stored session key");
     config.session_key = json?.session?.key;
-    // TODO: save config
+    store.set("session_key", config.session_key);
     return;
 }
 
@@ -175,12 +175,37 @@ async function postSongDataToAPI(songInfo, config) {
         body: createFormData(postData),
     }).catch((res) => {
         if (res.response.data.error == 9) {
-            // session key is invalid, so remove it from the config and reauthenticate
+            console.log("Session key is invalid, reauthenticating...");
+            config.token = undefined;
             config.session_key = undefined;
-            // TODO: save config
+            store.delete("token");
+            store.delete("session_key");
             authenticate(config);
         }
     });
+}
+
+/**
+ * @param {Config} config
+ * @returns {Promise<boolean>}
+ */
+async function isAuthenticated(config) {
+    if (!config.session_key) {
+        console.error("ERROR: Not authenticated yet!");
+        return false;
+    }
+    const postData = {
+        api_key: config.api_key,
+        sk: config.session_key,
+        format: "json",
+        method: "user.getinfo",
+    };
+    const data = await fetch("https://ws.audioscrobbler.com/2.0/", {
+        method: "POST",
+        body: createFormData(postData),
+    });
+    if (data.status === 403) return false;
+    return true;
 }
 
 /**
@@ -203,12 +228,26 @@ const config = /** @type {Config} */ {
     session_key: undefined,
 };
 
-export async function startup() {
-    // TODO: get stored config
+module.exports.startup = async function startup() {
+    // @ts-expect-error
+    config.token = store.get("token");
+    // @ts-expect-error
+    config.session_key = store.get("session_key");
     if (!config.session_key) {
         await authenticate(config);
+    } else {
+        if (await isAuthenticated(config)) {
+            console.log("Already authenticated!");
+        } else {
+            console.log("Session key is invalid, reauthenticating...");
+            config.token = undefined;
+            config.session_key = undefined;
+            store.delete("token");
+            store.delete("session_key");
+            await authenticate(config);
+        }
     }
-}
+};
 
 /**
  * @param {string} title
@@ -216,7 +255,7 @@ export async function startup() {
  * @param {number} duration
  * @returns {Promise<void>}
  */
-export async function postSong(title, artist, duration) {
+module.exports.postSong = async function postSong(title, artist, duration) {
     return await postSongDataToAPI(
         {
             title,
@@ -225,4 +264,4 @@ export async function postSong(title, artist, duration) {
         },
         config
     );
-}
+};

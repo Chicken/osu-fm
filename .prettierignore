@@ -1,0 +1,5 @@
+.github
+.yarn
+dist
+icons
+node_modules

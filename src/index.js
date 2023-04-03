@@ -1,29 +1,16 @@
-import { readFile } from "fs/promises";
-import Realm from "realm";
-import { postSong, startup } from "./lastfm.js";
+const { readFile } = require("fs/promises");
+const Realm = require("realm");
+const { postSong, startup } = require("./lastfm.js");
+const path = require("path");
+const { app, Tray, Menu } = require("electron");
 
-// TODO: find this automatically
-const osuDirectory = "/home/antti/.local/share/osu";
-
-const realm = await Realm.open({
-    path: `${osuDirectory}/client.realm`,
-    disableFormatUpgrade: true,
-    schemaVersion: 26,
-});
-
-const currentUsername = (await readFile(`${osuDirectory}/game.ini`, "utf8"))
-    .split("\n")
-    .find((l) => l.trim().startsWith("Username"))
-    ?.split(" = ")[1]
-    .trim();
-
-console.log(`Watching for scores by ${currentUsername}...`);
-
-process.on("SIGINT", () => process.exit());
-process.on("SIGTERM", () => process.exit());
-process.on("exit", () => {
-    realm.close();
-});
+const orError = () => {
+    throw new Error("Environment is broke ngl");
+};
+const osuDirectory =
+    process.platform === "linux"
+        ? path.join(process.env.HOME || orError(), ".local/share/osu")
+        : path.join(process.env.APPDATA || orError(), "osu");
 
 /**
  * @typedef {Object} Score
@@ -49,33 +36,73 @@ process.on("exit", () => {
  * @property {string} Username
  */
 
-const scores = realm.objects("Score");
-
-scores.addListener((scores, changes) => {
-    changes.insertions.forEach((scoreIndex) => {
-        const score = /** @type {Score} */ (scores[scoreIndex].toJSON());
-        if (
-            score.User.Username === currentUsername &&
-            Date.now() - score.Date.getTime() < 30 * 1000
-        )
-            newScore(score);
+(async () => {
+    const realm = await Realm.open({
+        path: path.join(osuDirectory, "client.realm"),
+        disableFormatUpgrade: true,
+        schemaVersion: 26,
     });
-});
 
-// Startup authentication
-await startup();
+    process.on("SIGINT", () => process.exit(0));
+    process.on("SIGTERM", () => process.exit(0));
+    process.on("exit", () => {
+        realm.close();
+    });
 
-/**
- * @param {Score} score
- */
-function newScore(score) {
-    const songTitle = score.BeatmapInfo.Metadata.Title;
-    const songArtist = score.BeatmapInfo.Metadata.Artist;
-    const length = ~~(score.BeatmapInfo.Length / 1000);
+    const currentUsername = (await readFile(path.join(osuDirectory, "game.ini"), "utf8"))
+        .split("\n")
+        .find((l) => l.trim().startsWith("Username"))
+        ?.split(" = ")[1]
+        .trim();
 
-    console.log("Played:", songArtist, "-", songTitle);
+    if (!currentUsername) throw new Error("Couldn't find current username");
 
-    postSong(songTitle, songArtist, length).catch(console.error);
-}
+    console.log(`Watching for scores by ${currentUsername}...`);
 
-// TODO: make UI for this
+    const scores = realm.objects("Score");
+
+    scores.addListener((scores, changes) => {
+        changes.insertions.forEach((scoreIndex) => {
+            const score = /** @type {Score} */ (scores[scoreIndex].toJSON());
+            if (score.User.Username === currentUsername && Date.now() - score.Date.getTime() < 30 * 1000)
+                newScore(score);
+        });
+    });
+
+    /**
+     * @param {Score} score
+     */
+    function newScore(score) {
+        const songTitle = score.BeatmapInfo.Metadata.Title;
+        const songArtist = score.BeatmapInfo.Metadata.Artist;
+        const length = ~~(score.BeatmapInfo.Length / 1000);
+
+        console.log("Played:", songArtist, "-", songTitle);
+
+        postSong(songTitle, songArtist, length).catch(console.error);
+    }
+
+    function startApp() {
+        const lockedInstance = app.requestSingleInstanceLock();
+        if (!lockedInstance) return app.quit();
+
+        const tray = new Tray(path.join(__dirname, "..", "icons", "tray.png"));
+        tray.setToolTip("osu!fm - Last.fm scrobbler for osu!");
+        tray.setContextMenu(
+            Menu.buildFromTemplate([
+                {
+                    label: "Quit",
+                    role: "quit",
+                },
+            ])
+        );
+    }
+
+    if (app.isReady()) {
+        startApp();
+    } else {
+        app.once("ready", startApp);
+    }
+
+    startup();
+})();

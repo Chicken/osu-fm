@@ -6,16 +6,68 @@
     "author": "Antti <antti@antti.codes>",
     "license": "MIT",
     "private": true,
-    "type": "module",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/Chicken/osu-fm.git"
+    },
+    "homepage": "https://github.com/Chicken/osu-fm#readme",
+    "bugs": {
+        "url": "https://github.com/Chicken/osu-fm/issues"
+    },
+    "keywords": [
+        "osu",
+        "lazer",
+        "music",
+        "last.fm",
+        "lastfm",
+        "tracking"
+    ],
     "scripts": {
-        "start": "node ."
+        "start": "electron .",
+        "build": "electron-builder build -l -w",
+        "release": "electron-builder build -l -w --publish always",
+        "format": "prettier --write .",
+        "update": "yarn upgrade-interactive"
+    },
+    "build": {
+        "linux": {
+            "category": "Utility",
+            "icon": "icons/large.png",
+            "target": [
+                "AppImage"
+            ],
+            "publish": "github"
+        },
+        "win": {
+            "icon": "icons/large.png",
+            "target": [
+                "nsis"
+            ],
+            "publish": "github"
+        }
+    },
+    "prettier": {
+        "printWidth": 120,
+        "tabWidth": 4,
+        "semi": true,
+        "singleQuote": false,
+        "quoteProps": "consistent",
+        "trailingComma": "es5",
+        "bracketSpacing": true,
+        "arrowParens": "always",
+        "endOfLine": "lf"
     },
     "dependencies": {
+        "electron-store": "^8.1.0",
         "md5": "^2.3.0",
         "node-fetch": "^3.3.1",
         "realm": "^11.7.0"
     },
     "devDependencies": {
-        "@types/node": "^18.15.11"
-    }
+        "@types/node": "^18.15.11",
+        "electron": "^23.2.1",
+        "electron-builder": "^23.6.0",
+        "prettier": "^2.8.7"
+    },
+    "packageManager": "yarn@3.5.0"
 }
