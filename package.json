@@ -1,6 +1,6 @@
 {
     "name": "osu-fm",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "Desktop software for tracking completed osu! (lazer) beatmap songs on Last.fm",
     "main": "src/index.js",
     "author": "Antti <antti@antti.codes>",
