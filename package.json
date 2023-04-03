@@ -60,7 +60,6 @@
     "dependencies": {
         "electron-store": "^8.1.0",
         "md5": "^2.3.0",
-        "node-fetch": "^3.3.1",
         "realm": "^11.7.0"
     },
     "devDependencies": {

@@ -27,9 +27,6 @@ THE SOFTWARE.
 const md5 = require("md5");
 const { store } = require("./store.js");
 const { shell } = require("electron");
-const fetchPromise = import("node-fetch").then((mod) => mod.default);
-// @ts-expect-error
-const fetch = (...args) => fetchPromise.then((fetch) => fetch(...args));
 
 /**
  * @param {Record<string, string>} params
