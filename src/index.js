@@ -1,8 +1,8 @@
-const { readFile } = require("fs/promises");
-const Realm = require("realm");
-const { postSong, startup } = require("./lastfm.js");
-const path = require("path");
-const { app, Tray, Menu } = require("electron");
+import { readFile } from "node:fs/promises";
+import Realm from "realm";
+import { postSong, startup } from "./lastfm.js";
+import path from "node:path";
+import { app, Tray, Menu } from "electron";
 
 const orError = () => {
     throw new Error("Environment is broke ngl");
@@ -86,7 +86,7 @@ const osuDirectory =
         const lockedInstance = app.requestSingleInstanceLock();
         if (!lockedInstance) return app.quit();
 
-        const tray = new Tray(path.join(__dirname, "..", "icons", "tray.png"));
+        const tray = new Tray(path.join(import.meta.dirname, "..", "icons", "tray.png"));
         tray.setToolTip("osu!fm - Last.fm scrobbler for osu!");
         tray.setContextMenu(
             Menu.buildFromTemplate([

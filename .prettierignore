@@ -1,5 +1,5 @@
 .github
-.yarn
 dist
 icons
 node_modules
+pnpm-lock.yaml

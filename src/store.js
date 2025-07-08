@@ -1,6 +1,6 @@
-const Store = require("electron-store");
+import Store from "electron-store";
 
-const store = new Store({
+export const store = new Store({
     name: "data",
     schema: {
         token: {
@@ -11,5 +11,3 @@ const store = new Store({
         },
     },
 });
-
-module.exports.store = store;

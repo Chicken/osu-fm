@@ -24,9 +24,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-const md5 = require("md5");
-const { store } = require("./store.js");
-const { shell } = require("electron");
+import { store } from "./store.js";
+import { shell } from "electron";
+import { createHash } from "node:crypto";
 
 /**
  * @param {Record<string, string>} params
@@ -74,7 +74,7 @@ function createApiSig(params, secret) {
         sig += `${key}${params[key]}`;
     }
     sig += secret;
-    sig = md5(sig);
+    sig = createHash("md5").update(sig).digest("hex");
     return sig;
 }
 
@@ -225,7 +225,7 @@ const config = /** @type {Config} */ {
     session_key: undefined,
 };
 
-module.exports.startup = async function startup() {
+export async function startup() {
     // @ts-expect-error
     config.token = store.get("token");
     // @ts-expect-error
@@ -252,7 +252,7 @@ module.exports.startup = async function startup() {
  * @param {number} duration
  * @returns {Promise<void>}
  */
-module.exports.postSong = async function postSong(title, artist, duration) {
+export async function postSong(title, artist, duration) {
     return await postSongDataToAPI(
         {
             title,
